@@ -1,36 +1,21 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-
+// Este archivo ahora solo se preocupa de hacer una petición a nuestro propio backend.
 export const suggestStepsForGoal = async (goalTitle: string): Promise<string[]> => {
   try {
-    const prompt = `Eres un experto en productividad y establecimiento de metas. Desglosa la siguiente meta del usuario en una lista de pasos pequeños y procesables. La meta es: "${goalTitle}". Devuelve la respuesta como un objeto JSON con una única clave "steps", que es un array de strings. Cada string debe ser un paso conciso. Por ejemplo: {"steps": ["Paso 1", "Paso 2", "Paso 3"]}`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            steps: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.STRING,
-                description: "Un único paso procesable hacia la meta."
-              },
-              description: "Un array de pasos procesables.",
-            },
-          },
-          required: ["steps"],
-        },
+    // Llama a tu propia API creada en el Paso 1
+    const response = await fetch('/api/suggest-steps', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ goalTitle }),
     });
 
-    const jsonStr = response.text.trim();
-    const result = JSON.parse(jsonStr);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Error en el servidor.");
+    }
+
+    const result = await response.json();
     
     if (result && Array.isArray(result.steps)) {
         return result.steps;
@@ -38,7 +23,7 @@ export const suggestStepsForGoal = async (goalTitle: string): Promise<string[]> 
     return [];
 
   } catch (error) {
-    console.error("Error llamando a la API de Gemini:", error);
+    console.error("Error llamando al API proxy:", error);
     throw new Error("No se pudieron obtener sugerencias de la IA. Por favor, inténtalo de nuevo.");
   }
 };
